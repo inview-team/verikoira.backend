@@ -4,41 +4,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/streadway/amqp"
+	"go.uber.org/zap"
 )
 
 type Publisher struct {
 	address string
+	queue   string
 	conn    *amqp.Connection
 	channel *amqp.Channel
 	done    chan error
 }
 
-func NewPublisher(addr string) *Publisher {
+func NewPublisher(addr, queue string) *Publisher {
 	return &Publisher{
 		address: addr,
+		queue:   queue,
 		done:    make(chan error),
 	}
 }
 
-func (p *Publisher) DeclareQueue(queue string) error {
-	_, err := p.channel.QueueDeclare(
-		queue,
-		false,
-		false,
-		true,
-		false,
-		nil,
-	)
-
-	return err
-}
-
-func (p *Publisher) Send(data []byte, queue string) error {
+func (p *Publisher) Send(data []byte) error {
 	be := backoff.NewExponentialBackOff()
 	be.MaxElapsedTime = time.Minute
 	be.InitialInterval = 1 * time.Second
@@ -51,28 +40,29 @@ func (p *Publisher) Send(data []byte, queue string) error {
 		if d == backoff.Stop {
 			return fmt.Errorf("stop reconnecting")
 		}
-
 		<-time.After(d)
 		if err := p.Connect(); err != nil {
-			log.Printf("could not reconnect: %+v", err)
+			zap.L().Debug("could not reconnect", zap.Error(err))
+
 			continue
 		}
 		err := p.channel.Publish(
 			"",
-			queue,
+			p.queue,
 			false,
 			false,
 			amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
 				ContentType:  "application/json",
 				Body:         data,
-			},
-		)
+			})
 		if err != nil {
-			fmt.Printf("failed to send data: %+v", err)
+			zap.L().Error("failed to send data", zap.Error(err))
+
 			continue
 		}
-		log.Printf(" [x] Sent %s", data)
+		zap.L().Debug("sent", zap.String("data", string(data)))
+
 		return nil
 	}
 }
@@ -90,18 +80,21 @@ func (p *Publisher) Connect() error {
 	}
 
 	go func() {
-		log.Printf("closing: %s", <-p.conn.NotifyClose(make(chan *amqp.Error)))
+		zap.L().Debug("closing", zap.Error(<-p.conn.NotifyClose(make(chan *amqp.Error))))
 		p.done <- errors.New("channel closed")
 	}()
 
-	return nil
+	_, err = p.channel.QueueDeclare(
+		p.queue,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	return err
 }
 
 func (p *Publisher) Close() error {
-	err := p.channel.Close()
-	if err != nil {
-		return err
-	}
-
 	return p.conn.Close()
 }

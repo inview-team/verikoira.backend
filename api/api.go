@@ -16,10 +16,9 @@ import (
 )
 
 type KoiraAPI struct {
-	http       *http.Server
-	publisher  *rmq.Publisher
-	consumer   *rmq.Consumer
-	writeQueue string
+	http      *http.Server
+	publisher *rmq.Publisher
+	consumer  *rmq.Consumer
 }
 
 type SearchQuery struct {
@@ -31,13 +30,12 @@ func New(conf *config.Settings, ctx context.Context) (*KoiraAPI, error) {
 		http: &http.Server{
 			Addr: net.JoinHostPort(conf.Host, conf.Port),
 		},
-		publisher:  rmq.NewPublisher(conf.Rmq.Address),
-		consumer:   rmq.NewConsumer(conf.Rmq.Address, conf.Rmq.ReadQueue),
-		writeQueue: conf.Rmq.WriteQueue,
+		publisher: rmq.NewPublisher(conf.Rmq.Address, conf.Rmq.WriteQueue),
+		consumer:  rmq.NewConsumer(conf.Rmq.Address, conf.Rmq.ReadQueue),
 	}
 	k.http.Handler = k.setupRouter()
 
-	return k, k.publisher.DeclareQueue(k.writeQueue)
+	return k, nil
 }
 
 func (k *KoiraAPI) Run() {
@@ -49,12 +47,18 @@ func (k *KoiraAPI) Run() {
 		}
 	}()
 
+	err := k.publisher.Connect()
+	if err != nil {
+		zap.L().Error("failed to connect to RabbitMQ", zap.Error(err))
+		return
+	}
+
 	go func() {
 		zap.L().Info("server started")
 		errs <- k.http.ListenAndServe()
 	}()
 
-	err := <-errs
+	err = <-errs
 	if err != nil {
 		zap.L().Error("server exited with error", zap.Error(err))
 	}
@@ -88,7 +92,7 @@ func (k *KoiraAPI) search(c *gin.Context) {
 		return
 	}
 
-	err = k.publisher.Send([]byte(query.Payload), k.writeQueue)
+	err = k.publisher.Send([]byte(query.Payload))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "error": "failed to perform search request"})
 		zap.L().Error("failed to perform search request", zap.Error(err))
