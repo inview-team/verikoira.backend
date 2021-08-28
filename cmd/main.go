@@ -34,6 +34,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	log.Println(conf.Rmq.Address)
+	log.Println(conf.Rmq.ReadQueue)
+
 	k, err := api.New(conf, ctx)
 	if err != nil {
 		zap.L().Error("cannot initialize API", zap.Error(err))

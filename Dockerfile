@@ -5,4 +5,5 @@ COPY       go.sum .
 RUN        go mod download
 COPY       . .
 RUN        go build -o verikoira ./cmd/main.go
+RUN ls
 ENTRYPOINT ["./verikoira"]

@@ -35,6 +35,8 @@ func New(conf *config.Settings, ctx context.Context) (*KoiraAPI, error) {
 	}
 	k.http.Handler = k.setupRouter()
 
+	zap.L().Debug("connecting to RMQ", zap.String("address", conf.Rmq.Address))
+
 	return k, nil
 }
 
