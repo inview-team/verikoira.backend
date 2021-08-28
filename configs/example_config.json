@@ -9,6 +9,7 @@
   "rabbitmq":
   {
     "address": "amqp://127.0.0.1:5672",
-    "queue": "a"
+    "read_queue": "queue1",
+    "write_queue": "queue2"
   }
-}  
+}
