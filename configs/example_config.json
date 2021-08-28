@@ -1,0 +1,18 @@
+{
+  "host": "0.0.0.0",
+  "port": "1337",
+  "logger":
+  {
+    "file": "api.log",
+    "level": "debug"
+  },
+  "database":
+  {
+    "address": "mongodb://root:pass12345@mongodb:27017",
+    "database": "a",
+    "collection": "b"
+  },
+  "rabbitmq":
+  {
+    "address": "rabbitmq:1883",
+    
