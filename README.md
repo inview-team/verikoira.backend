@@ -24,7 +24,7 @@ $ ./verikoira -config /path/to/config_file.json
   {
     "address": "amqp://127.0.0.1:5672",
     "read_queue": "queue1",
-    "write_queue": "queue2",
+    "write_queue": "queue2"
   }
 }
 ```
