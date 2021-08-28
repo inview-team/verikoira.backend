@@ -11,26 +11,29 @@ import (
 	ginzap "github.com/akath19/gin-zap"
 	"github.com/gin-gonic/gin"
 	"github.com/inview-team/verikoira.backend/internal/config"
-	"github.com/inview-team/verikoira.backend/internal/db"
+	"github.com/inview-team/verikoira.backend/internal/rmq"
 	"go.uber.org/zap"
 )
 
 type KoiraAPI struct {
-	http        *http.Server
-	mongoClient *db.Storage
+	http       *http.Server
+	publisher  *rmq.Publisher
+	consumer   *rmq.Consumer
+	writeQueue string
+}
+
+type SearchQuery struct {
+	Payload string `json:"payload"`
 }
 
 func New(conf *config.Settings, ctx context.Context) (*KoiraAPI, error) {
-	mongo, err := db.New(&conf.Database, ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	k := &KoiraAPI{
 		http: &http.Server{
 			Addr: net.JoinHostPort(conf.Host, conf.Port),
 		},
-		mongoClient: mongo,
+		publisher:  rmq.NewPublisher(conf.Rmq.Address),
+		consumer:   rmq.NewConsumer(conf.Rmq.Address, conf.Rmq.ReadQueue),
+		writeQueue: conf.Rmq.WriteQueue,
 	}
 	k.http.Handler = k.setupRouter()
 
@@ -83,5 +86,27 @@ func (k *KoiraAPI) search(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": 404, "error": "failed to parse request"})
 		zap.L().Error("failed to parse request", zap.Error(err))
 		return
+	}
+
+	err = k.publisher.Send([]byte(query.Payload), k.writeQueue)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "error": "failed to perform search request"})
+		zap.L().Error("failed to perform search request", zap.Error(err))
+		return
+	}
+
+	resChan, err := k.consumer.Reconnect(context.TODO())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "error": "failed to connect to RabbitMQ"})
+		zap.L().Error("failed to connect to RabbitMQ", zap.Error(err))
+		return
+	}
+	result := <-resChan
+	data := result.Body
+	c.JSON(http.StatusOK, gin.H{"result": string(data)})
+	zap.L().Debug("received data", zap.String("result", string(data)))
+	err = result.Ack(false)
+	if err != nil {
+		zap.L().Error("failed to ack message", zap.Error(err))
 	}
 }

@@ -16,14 +16,10 @@ const (
 	Warn  LogLevel = "warn"
 )
 
-type DatabaseConfig struct {
-	Address    string `json:"address"`
-	Database   string `json:"database"`
-	Collection string `json:"collection"`
-}
-
 type RMQConfig struct {
-	Address string `json:"address"`
+	Address    string `json:"address"`
+	ReadQueue  string `json:"read_queue"`
+	WriteQueue string `json:"write_queue"`
 }
 
 type LoggerSettings struct {
@@ -32,11 +28,10 @@ type LoggerSettings struct {
 }
 
 type Settings struct {
-	Host     string         `json:"host"`
-	Port     string         `json:"port"`
-	Logger   LoggerSettings `json:"logger"`
-	Database DatabaseConfig `json:"database"`
-	Rmq      RMQConfig      `json:"rabbitmq"`
+	Host   string         `json:"host"`
+	Port   string         `json:"port"`
+	Logger LoggerSettings `json:"logger"`
+	Rmq    RMQConfig      `json:"rabbitmq"`
 }
 
 func Init(cfgFile string) (*Settings, error) {
