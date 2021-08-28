@@ -37,7 +37,7 @@ func New(conf *config.Settings, ctx context.Context) (*KoiraAPI, error) {
 	}
 	k.http.Handler = k.setupRouter()
 
-	return k, nil
+	return k, k.publisher.DeclareQueue(k.writeQueue)
 }
 
 func (k *KoiraAPI) Run() {

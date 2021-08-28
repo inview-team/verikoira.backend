@@ -1,0 +1,37 @@
+version: '3.8'
+networks:
+  rabbit:
+    driver: bridge
+  db:
+    driver: bridge
+services:
+  mongodb:
+    container_name: mongodb
+    hostname: mongodb
+    image: "mongo"
+￼   ports:
+￼     - 27017:27017
+    networks:
+      - db
+  rmq:
+    container_name: rmq
+    hostname: rmq
+    image: "rabbitmq:3.8.5-management"
+    ports:
+      - "5672"
+      - "15672"
+    networks:
+      - rabbit
+  api:
+    build:
+      context: ../
+      dockerfile: ./build/Dockerfile
+    ports:
+      - 1337:1337
+    restart: on-failure
+    depends_on:
+      - mongodb
+      - rmq
+    networks:
+      - db
+      - rabbit
