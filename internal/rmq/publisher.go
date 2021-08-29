@@ -41,7 +41,7 @@ func (p *Publisher) Send(data []byte) error {
 			return fmt.Errorf("stop reconnecting")
 		}
 		<-time.After(d)
-		if err := p.Connect(); err != nil {
+		if err := p.connect(); err != nil {
 			zap.L().Debug("could not reconnect", zap.Error(err))
 
 			continue
@@ -67,7 +67,7 @@ func (p *Publisher) Send(data []byte) error {
 	}
 }
 
-func (p *Publisher) Connect() error {
+func (p *Publisher) connect() error {
 	conn, err := amqp.Dial(p.address)
 	if err != nil {
 		return err
@@ -95,6 +95,28 @@ func (p *Publisher) Connect() error {
 	)
 
 	return err
+}
+
+func (p *Publisher) Reconnect() error {
+	be := backoff.NewExponentialBackOff()
+	be.MaxElapsedTime = time.Minute
+	be.InitialInterval = 1 * time.Second
+	be.Multiplier = 2
+	be.MaxInterval = 15 * time.Second
+
+	b := backoff.WithContext(be, context.Background())
+	for {
+		d := b.NextBackOff()
+		if d == backoff.Stop {
+			return fmt.Errorf("stop reconnecting")
+		}
+		<-time.After(d)
+		if err := p.connect(); err != nil {
+			zap.L().Debug("could not reconnect", zap.Error(err))
+			continue
+		}
+		return nil
+	}
 }
 
 func (p *Publisher) Close() error {

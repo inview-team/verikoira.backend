@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const addr = "amqp://rmq:5672"
+
 type KoiraAPI struct {
 	http      *http.Server
 	publisher *rmq.Publisher
@@ -30,8 +32,8 @@ func New(conf *config.Settings, ctx context.Context) (*KoiraAPI, error) {
 		http: &http.Server{
 			Addr: net.JoinHostPort(conf.Host, conf.Port),
 		},
-		publisher: rmq.NewPublisher(conf.Rmq.Address, conf.Rmq.WriteQueue),
-		consumer:  rmq.NewConsumer(conf.Rmq.Address, conf.Rmq.ReadQueue),
+		publisher: rmq.NewPublisher(addr, "tasks"),
+		consumer:  rmq.NewConsumer(addr, "results"),
 	}
 	k.http.Handler = k.setupRouter()
 
@@ -49,7 +51,7 @@ func (k *KoiraAPI) Run() {
 		}
 	}()
 
-	err := k.publisher.Connect()
+	err := k.publisher.Reconnect()
 	if err != nil {
 		zap.L().Error("failed to connect to RabbitMQ", zap.Error(err))
 		return
