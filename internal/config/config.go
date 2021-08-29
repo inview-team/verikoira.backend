@@ -18,7 +18,6 @@ const (
 
 type RMQConfig struct {
 	Address    string `json:"address"`
-	Exchange   string `json:"exchange"`
 	ReadQueue  string `json:"read_queue"`
 	WriteQueue string `json:"write_queue"`
 }

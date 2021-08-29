@@ -9,8 +9,7 @@
 	"rabbitmq":
 	{
 		"address": "amqp://rmq:5672",
-		"exchange": "queries",
-		"read_queue": "task",
+		"read_queue": "queries",
 		"write_queue": "result"
 	}
 }

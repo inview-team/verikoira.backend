@@ -44,6 +44,19 @@ func (c *Consumer) connect() error {
 		c.done <- errors.New("channel closed")
 	}()
 
+	err = c.channel.ExchangeDeclare(
+		c.queue,  // name
+		"fanout", // type
+		true,     // durable
+		false,    // auto-deleted
+		false,    // internal
+		false,    // no-wait
+		nil,      // arguments
+	)
+	if err != nil {
+		return err
+	}
+
 	_, err = c.channel.QueueDeclare(
 		c.queue,
 		true,
@@ -52,7 +65,17 @@ func (c *Consumer) connect() error {
 		false,
 		nil,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return c.channel.QueueBind(
+		c.queue, // queue name
+		"",      // routing key
+		c.queue, // exchange
+		false,
+		nil,
+	)
 }
 
 func (c *Consumer) Reconnect(ctx context.Context) (<-chan amqp.Delivery, error) {

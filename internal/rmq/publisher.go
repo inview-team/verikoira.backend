@@ -84,14 +84,16 @@ func (p *Publisher) Connect() error {
 		p.done <- errors.New("channel closed")
 	}()
 
-	_, err = p.channel.QueueDeclare(
-		p.queue,
-		true,
-		false,
-		false,
-		false,
-		nil,
+	err = p.channel.ExchangeDeclare(
+		p.queue,  // name
+		"fanout", // type
+		true,     // durable
+		false,    // auto-deleted
+		false,    // internal
+		false,    // no-wait
+		nil,      // arguments
 	)
+
 	return err
 }
 
