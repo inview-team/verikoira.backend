@@ -2,17 +2,17 @@ version: "3"
 networks:
         rabbit:
                 driver: bridge
-                #db:
-                #driver: bridge
+        db:
+                driver: bridge
 services:
-        #        mongodb:
-        #                container_name: mongodb
-        #                hostname: mongodb
-        #                image: mongo
-        #                ports:
-        #                        - 27017
-        #                networks:
-        #                        - db
+        mongodb:
+                container_name: mongodb
+                hostname: mongodb
+                image: mongo
+                ports:
+                        - 27017:27017
+                networks:
+                        - db
         rmq:
                 container_name: rmq
                 hostname: rmq
@@ -30,5 +30,7 @@ services:
                 restart: on-failure
                 depends_on:
                         - rmq
+                        - mongodb
                 networks:
                         - rabbit
+                        - db
